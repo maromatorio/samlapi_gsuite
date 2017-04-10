@@ -18,52 +18,47 @@ from urlparse import urlparse, urlunparse
 Config = ConfigParser.ConfigParser()
 Config.read('settings.ini')
 
-# region: The default AWS region that this script will connect
-# to for all API calls
+# The default AWS region to be used
 region = Config.get('Settings', 'region')
 
-# output format: The AWS CLI output format that will be configured in the
+# The AWS CLI output format that will be configured in the
 # saml profile (affects subsequent CLI calls)
 outputformat = Config.get('Settings', 'outputformat')
 
-# awsconfigfile: The file where this script will store the temp
-# credentials under the saml profile
+# The file where this script will store the STS credentials
 awsconfigfile = Config.get('Settings', 'awsconfigfile')
 
-# idpentryurl: The initial url that starts the authentication process.
-# fill in your idpid and spid, or write
+# The initial url that starts the authentication process
 idpentryurl = Config.get('Settings', 'URL')
 
-# if only using locally/for yourself, you can hardcode your login email
+# If only using locally/for yourself, you can hardcode your login email
 if Config.has_option('Settings', 'Email'):
     email = Config.get('Settings', 'Email')
 else:
     email = None
 
-# SSL certificate verification: Whether or not strict certificate
-# verification is done, False should only be used for dev/test
+# False should only be used for dev/test
 sslverification = True
 
 # Uncomment to enable low level debugging
 #logging.basicConfig(level=logging.DEBUG)
 ##########################################################################
 
-# Get the federated credentials from the user
+# Get the credentials from the user
 if not email:
-    print "Email:",
+    print "Email: ",
     email = raw_input()
 else:
     print "Using: %s" % email
 password = getpass.getpass()
-print "MFA Pin:",
+print "MFA Pin: ",
 mfapin = raw_input()
 print ''
 
-# Programmatically get the SAML assertion
 # Initiate session handler
 session = requests.Session()
 # Configure Session Headers
-session.headers['User-Agent'] = 'AWS Sign-in'
+session.headers['User-Agent'] = 'AWS Sign-In'
 # Initial Page load
 google_session = session.get(idpentryurl)
 google_session.raise_for_status()
@@ -156,22 +151,21 @@ google_session = session.post(challenge_url, data=payload)
 google_session.raise_for_status()
 
 response = session.get(idpentryurl)
+# Debug the response if needed
+#print (response.text)
 
 parsed = BeautifulSoup(response.text, 'html.parser')
 saml_element = parsed.find('input', {'name':'SAMLResponse'})
 
 if not saml_element:
-    raise StandardError, 'Could not get a SAML reponse, check credentials'
+    raise StandardError, 'Could not get a SAML reponse, check credentials.'
 
 saml = saml_element['value']
 
-# Debug the response if needed
-#print (response.text)
-
 # Overwrite and delete the credential variables, just for safety
-username = '##############################################'
-password = '##############################################'
-mfapin   = '##############################################'
+username = '#################################################'
+password = '#################################################'
+mfapin   = '#################################################'
 del username
 del password
 del mfapin
@@ -184,9 +178,8 @@ for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribut
         for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
             awsroles.append(saml2attributevalue.text)
 
-# Note the format of the attribute value should be role_arn,principal_arn
-# but lots of blogs list it as principal_arn,role_arn so let's reverse
-# them if needed
+# Note the format of the attribute value should be role_arn,principal_arn, but
+# lots of blogs list it as principal_arn,role_arn so let's reverse if needed
 for awsrole in awsroles:
     chunks = awsrole.split(',')
     if'saml-provider' in chunks[0]:
@@ -195,14 +188,12 @@ for awsrole in awsroles:
         awsroles.insert(index, newawsrole)
         awsroles.remove(awsrole)
 
-# If I have more than one role, ask the user which one they want,
-# otherwise just proceed
-print ""
+# If there's more than one role, ask the user to pick one; otherwise proceed
 if len(awsroles) > 1:
     i = 0
     print "Please choose the role you would like to assume:"
     for awsrole in awsroles:
-        print '[', i, ']: ', awsrole.split(',')[0]
+        print ' [', i, ']: ', awsrole.split(',')[0]
         i += 1
     print "Selection: ",
     selectedroleindex = raw_input()
@@ -235,8 +226,7 @@ filename = home + awsconfigfile
 config = ConfigParser.RawConfigParser()
 config.read(filename)
 
-# Put the credentials into a saml specific section instead of clobbering
-# any default credentials
+# Put the creds into a saml-specific profile instead of clobbering other creds
 if not config.has_section('saml'):
     config.add_section('saml')
 
@@ -251,9 +241,10 @@ with open(filename, 'w+') as configfile:
     config.write(configfile)
 
 # Give the user some basic info as to what has just happened
-print '\n\n----------------------------------------------------------------'
-print 'Your new access key pair has been stored in the AWS configuration file {0} under the saml profile.'.format(filename)
+print '\n\n-------------------------------------------------------------------'
+print 'Your new access key pair has been stored in the AWS configuration file:'
+print '    {0} (under the saml profile).'.format(filename)
 print 'Note that it will expire at {0}.'.format(aws_exp)
-print 'After this time, you may safely rerun this script to refresh your access key pair.'
-print 'To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile saml ec2 describe-instances).'
-print '----------------------------------------------------------------\n\n'
+print 'To use this credential, call the AWS CLI with the --profile option'
+print '    (e.g. aws --profile saml ec2 describe-instances).'
+print '-------------------------------------------------------------------\n\n'
