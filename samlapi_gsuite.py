@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import os
 import boto3
 import requests
 import getpass
@@ -16,7 +17,7 @@ from urlparse import urlparse, urlunparse
 ##########################################################################
 # Variables
 Config = ConfigParser.ConfigParser()
-Config.read('settings.ini')
+Config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)),'settings.ini'))
 
 # The default AWS region to be used
 region = Config.get('Settings', 'region')
