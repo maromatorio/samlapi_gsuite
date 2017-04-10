@@ -4,4 +4,5 @@ Simple Python script to get temporary AWS CLI role creds via STS, using Google (
 
 ## TODO
 + Investigate using yubikey U2F instead of TOTP (not sure if possible yet)
-+ Additional validation, better error handling
++ Better error handling
++ Maybe move to something like [hologram](https://github.com/AdRoll/hologram), typing my gsuite password and TOTP code every hour is not ideal
