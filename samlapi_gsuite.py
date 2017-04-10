@@ -15,34 +15,45 @@ from urlparse import urlparse, urlunparse
 
 ##########################################################################
 # Variables
+Config = ConfigParser.ConfigParser()
+Config.read('settings.ini')
 
 # region: The default AWS region that this script will connect
 # to for all API calls
-region = 'us-east-1'
+region = Config.get('Settings', 'region')
 
 # output format: The AWS CLI output format that will be configured in the
 # saml profile (affects subsequent CLI calls)
-outputformat = 'json'
+outputformat = Config.get('Settings', 'outputformat')
 
 # awsconfigfile: The file where this script will store the temp
 # credentials under the saml profile
-awsconfigfile = '/.aws/credentials'
+awsconfigfile = Config.get('Settings', 'awsconfigfile')
+
+# idpentryurl: The initial url that starts the authentication process.
+# fill in your idpid and spid, or write
+idpentryurl = Config.get('Settings', 'URL')
+
+# if only using locally/for yourself, you can hardcode your login email
+if Config.has_option('Settings', 'Email'):
+    email = Config.get('Settings', 'Email')
+else:
+    email = None
 
 # SSL certificate verification: Whether or not strict certificate
 # verification is done, False should only be used for dev/test
 sslverification = True
 
-# idpentryurl: The initial url that starts the authentication process.
-idpentryurl = 'http://aws.aromator.io'
-
 # Uncomment to enable low level debugging
 #logging.basicConfig(level=logging.DEBUG)
-
 ##########################################################################
 
 # Get the federated credentials from the user
-print "Email:",
-email = raw_input()
+if not email:
+    print "Email:",
+    email = raw_input()
+else:
+    print "Using: %s" % email
 password = getpass.getpass()
 print "MFA Pin:",
 mfapin = raw_input()
